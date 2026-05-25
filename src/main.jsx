@@ -62,6 +62,7 @@ function App() {
   const scopedRef = useRef(false);
   const gameRef = useRef(null);
   const soundsRef = useRef({});
+  const orientationPausedAtRef = useRef(0);
   const [canvasSize, setCanvasSize] = useState({ width: 900, height: 640 });
   const [score, setScore] = useState(0);
   const [hits, setHits] = useState(0);
@@ -71,6 +72,7 @@ function App() {
   const [gameStarted, setGameStarted] = useState(false);
   const [sessionOver, setSessionOver] = useState(false);
   const [isScoped, setIsScoped] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
 
   const variables = useMemo(
     () => ({
@@ -115,6 +117,10 @@ function App() {
   };
 
   const resetGame = () => {
+    if (isPortrait) {
+      return;
+    }
+
     const nextGame = {
       dotSize: DOT_SIZE,
       resizeTimeMs: RESIZE_TIME_MS,
@@ -193,15 +199,29 @@ function App() {
 
   useEffect(() => {
     const updateSize = () => {
+      const viewportWidth = Math.floor(window.visualViewport?.width ?? window.innerWidth);
+      const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
+      const isMobileSized = viewportWidth <= 900 || viewportHeight <= 520;
+      const canvasPixels = isMobileSized
+        ? Math.min(viewportHeight * 0.78, viewportWidth * 0.5)
+        : viewportHeight * CANVAS_RADIUS_VIEWPORT_HEIGHT * 2;
+
+      setIsPortrait(viewportHeight > viewportWidth);
       setCanvasSize({
-        width: Math.floor(window.innerHeight * CANVAS_RADIUS_VIEWPORT_HEIGHT * 2),
-        height: Math.floor(window.innerHeight * CANVAS_RADIUS_VIEWPORT_HEIGHT * 2),
+        width: Math.floor(clamp(canvasPixels, 160, Math.min(viewportWidth, viewportHeight) * 0.9)),
+        height: Math.floor(clamp(canvasPixels, 160, Math.min(viewportWidth, viewportHeight) * 0.9)),
       });
     };
 
     updateSize();
     window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+    window.addEventListener("orientationchange", updateSize);
+    window.visualViewport?.addEventListener("resize", updateSize);
+    return () => {
+      window.removeEventListener("resize", updateSize);
+      window.removeEventListener("orientationchange", updateSize);
+      window.visualViewport?.removeEventListener("resize", updateSize);
+    };
   }, []);
 
   useEffect(() => {
@@ -239,6 +259,28 @@ function App() {
   }, [canvasSize, gameStarted]);
 
   useEffect(() => {
+    if (isPortrait) {
+      orientationPausedAtRef.current = performance.now();
+      return;
+    }
+
+    if (!orientationPausedAtRef.current) {
+      return;
+    }
+
+    const pausedFor = performance.now() - orientationPausedAtRef.current;
+    orientationPausedAtRef.current = 0;
+
+    if (targetRef.current) {
+      targetRef.current.startedAt += pausedFor;
+    }
+
+    if (gameRef.current?.nextTargetAt > performance.now()) {
+      gameRef.current.nextTargetAt += pausedFor;
+    }
+  }, [isPortrait]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
@@ -253,6 +295,11 @@ function App() {
       context.clearRect(0, 0, canvasSize.width, canvasSize.height);
       const game = gameRef.current;
       let target = targetRef.current;
+      if (isPortrait) {
+        animationRef.current = requestAnimationFrame(draw);
+        return;
+      }
+
       if (gameStarted && !game?.sessionOver && !target && now >= (game?.nextTargetAt ?? 0)) {
         if (game) {
           game.nextTargetAt = 0;
@@ -312,11 +359,11 @@ function App() {
 
     animationRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animationRef.current);
-  }, [canvasSize, gameStarted]);
+  }, [canvasSize, gameStarted, isPortrait]);
 
   const handleShot = (event) => {
     const game = gameRef.current;
-    if (event.button !== 0 || !gameStarted || !targetRef.current || game?.sessionOver) {
+    if (event.button !== 0 || isPortrait || !gameStarted || !targetRef.current || game?.sessionOver) {
       return;
     }
 
@@ -358,7 +405,7 @@ function App() {
 
   return (
     <main
-      className={`app ${isScoped ? "is-scoped" : ""}`}
+      className={`app ${isScoped ? "is-scoped" : ""} ${isPortrait ? "is-portrait" : ""}`}
       style={{ "--background-image": `url(${backgroundImageUrl})` }}
       onContextMenu={(event) => event.preventDefault()}
       onMouseDown={(event) => {
@@ -455,6 +502,20 @@ function App() {
             <button type="button" onClick={resetGame}>
               Restart
             </button>
+          </div>
+        </div>
+      )}
+
+      {isPortrait && (
+        <div
+          className="orientation-message"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="orientation-title"
+        >
+          <div className="orientation-panel">
+            <h1 id="orientation-title">Rotate to landscape</h1>
+            <p>This drill works best sideways. Turn your device to continue.</p>
           </div>
         </div>
       )}

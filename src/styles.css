@@ -18,20 +18,28 @@ body,
 #root {
   width: 100%;
   height: 100%;
+  min-width: 100%;
+  min-height: 100%;
   margin: 0;
 }
 
 body {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .app {
   position: relative;
   width: 100vw;
   height: 100vh;
+  width: 100dvw;
+  height: 100dvh;
+  min-height: 100dvh;
   background:
     linear-gradient(90deg, rgba(15, 18, 14, 0.48), rgba(20, 21, 18, 0.12)),
     var(--background-image) center / cover;
+  overflow: hidden;
+  touch-action: none;
   user-select: none;
 }
 
@@ -82,6 +90,8 @@ canvas {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  width: 100dvw;
+  height: 100dvh;
   z-index: 3;
 }
 
@@ -262,6 +272,42 @@ canvas {
   background: #ffffff;
 }
 
+.orientation-message {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  color: #f8f9f3;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.62)),
+    var(--background-image) center / cover;
+  backdrop-filter: blur(8px);
+}
+
+.orientation-panel {
+  width: min(360px, calc(100vw - 40px));
+  padding: 24px;
+  background: rgba(8, 9, 8, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  text-align: center;
+}
+
+.orientation-panel h1 {
+  margin: 0 0 10px;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.orientation-panel p {
+  margin: 0;
+  color: #dfe6d4;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
 @media (max-width: 760px) {
   .side-panel {
     width: 112.5vw;
@@ -299,5 +345,91 @@ canvas {
     max-width: calc(100vw - 28px);
     flex-wrap: wrap;
     gap: 8px 12px;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .target-area {
+    left: 38%;
+  }
+
+  .side-panel {
+    width: 100dvw;
+    height: 100dvh;
+  }
+
+  .hud {
+    top: 8px;
+    width: 30vw;
+    min-width: 142px;
+    height: auto;
+    min-height: 108px;
+    max-height: calc(100dvh - 16px);
+    gap: 5px;
+    padding: 8px;
+  }
+
+  .instructions {
+    top: 124px;
+    width: 30vw;
+    min-width: 142px;
+    gap: 5px;
+    padding: 8px;
+    font-size: 10px;
+    line-height: 1.18;
+  }
+
+  .instructions strong {
+    font-size: 11px;
+  }
+
+  .hud-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 6px;
+    font-size: 10px;
+  }
+
+  .hud-stats span:first-child {
+    font-size: 12px;
+  }
+
+  .shells {
+    gap: 8px;
+  }
+
+  .shell-stack {
+    height: 72px;
+  }
+
+  .shells img {
+    width: 78px;
+    height: 78px;
+  }
+
+  .settings {
+    left: 8px;
+    bottom: 8px;
+    max-width: 54vw;
+    min-height: 30px;
+    gap: 6px 10px;
+    padding: 6px 8px;
+    font-size: 10px;
+    flex-wrap: wrap;
+  }
+
+  .session-over-panel {
+    width: min(360px, calc(100dvw - 32px));
+    padding: 20px;
+  }
+
+  .session-over-panel h1 {
+    font-size: 28px;
+  }
+}
+
+@media (orientation: portrait) {
+  .app {
+    width: 100dvw;
+    height: 100dvh;
   }
 }
