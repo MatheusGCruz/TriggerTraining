@@ -99,6 +99,7 @@ canvas {
 }
 
 .hud,
+.instructions,
 .settings {
   position: absolute;
   z-index: 4;
@@ -127,6 +128,26 @@ canvas {
   gap: 6px;
   padding: 10px 12px;
   overflow: hidden;
+}
+
+.instructions {
+  top: calc(5vh + 25vh + 10px);
+  right: 0;
+  width: 15vw;
+  min-width: 220px;
+  min-height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.instructions strong {
+  font-size: 13px;
+  line-height: 1;
 }
 
 .hud-stats {
@@ -251,6 +272,13 @@ canvas {
     width: 36vw;
     min-width: 150px;
     min-height: 18vh;
+  }
+
+  .instructions {
+    top: calc(5vh + 18vh + 10px);
+    width: 36vw;
+    min-width: 150px;
+    font-size: 11px;
   }
 
   .hud-stats {

@@ -15,6 +15,7 @@ const DOT_SIZE = 14;
 const RING_MULTIPLIER = 5;
 const RESIZE_TIME_MS = 3000;
 const SCOPED_SIZE_MULTIPLIER = 3;
+const SCOPED_TIME_MULTIPLIER = 2.5;
 const NORMAL_SCORE_BASE = 100;
 const SCOPED_SCORE_BASE = 50;
 const CANVAS_RADIUS_VIEWPORT_HEIGHT = 0.3;
@@ -67,6 +68,7 @@ function App() {
   const [misses, setMisses] = useState(0);
   const [round, setRound] = useState(1);
   const [targetsThisRound, setTargetsThisRound] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
   const [sessionOver, setSessionOver] = useState(false);
   const [isScoped, setIsScoped] = useState(false);
 
@@ -76,6 +78,7 @@ function App() {
       ringMultiplier: RING_MULTIPLIER,
       resizeTimeMs: RESIZE_TIME_MS,
       scopedSizeMultiplier: SCOPED_SIZE_MULTIPLIER,
+      scopedTimeMultiplier: SCOPED_TIME_MULTIPLIER,
       normalScoreBase: NORMAL_SCORE_BASE,
       scopedScoreBase: SCOPED_SCORE_BASE,
       canvasRadiusViewportHeight: CANVAS_RADIUS_VIEWPORT_HEIGHT,
@@ -106,6 +109,11 @@ function App() {
     sound.play().catch(() => {});
   };
 
+  const getTargetTimeMs = (game) => {
+    const resizeTimeMs = game?.resizeTimeMs ?? RESIZE_TIME_MS;
+    return scopedRef.current ? resizeTimeMs * SCOPED_TIME_MULTIPLIER : resizeTimeMs;
+  };
+
   const resetGame = () => {
     const nextGame = {
       dotSize: DOT_SIZE,
@@ -131,12 +139,13 @@ function App() {
     setMisses(0);
     setRound(1);
     setTargetsThisRound(0);
+    setGameStarted(true);
     setSessionOver(false);
   };
 
   const advanceTarget = ({ missed }) => {
     const game = gameRef.current;
-    if (!game || game.sessionOver) {
+    if (!gameStarted || !game || game.sessionOver) {
       return;
     }
 
@@ -211,6 +220,11 @@ function App() {
       };
 
     gameRef.current = game;
+    if (!gameStarted) {
+      targetRef.current = null;
+      return;
+    }
+
     if (game.nextTargetAt > performance.now()) {
       targetRef.current = null;
       return;
@@ -222,7 +236,7 @@ function App() {
       game.dotSize / 2,
       RING_MULTIPLIER
     );
-  }, [canvasSize]);
+  }, [canvasSize, gameStarted]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -239,7 +253,7 @@ function App() {
       context.clearRect(0, 0, canvasSize.width, canvasSize.height);
       const game = gameRef.current;
       let target = targetRef.current;
-      if (!game?.sessionOver && !target && now >= (game?.nextTargetAt ?? 0)) {
+      if (gameStarted && !game?.sessionOver && !target && now >= (game?.nextTargetAt ?? 0)) {
         if (game) {
           game.nextTargetAt = 0;
         }
@@ -253,9 +267,9 @@ function App() {
         targetRef.current = target;
       }
 
-      if (target && !game?.sessionOver) {
+      if (gameStarted && target && !game?.sessionOver) {
         const elapsed = now - target.startedAt;
-        const resizeTimeMs = game?.resizeTimeMs ?? RESIZE_TIME_MS;
+        const resizeTimeMs = getTargetTimeMs(game);
         const progress = clamp(elapsed / resizeTimeMs, 0, 1);
 
         if (progress >= 1) {
@@ -298,11 +312,11 @@ function App() {
 
     animationRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animationRef.current);
-  }, [canvasSize]);
+  }, [canvasSize, gameStarted]);
 
   const handleShot = (event) => {
     const game = gameRef.current;
-    if (event.button !== 0 || !targetRef.current || game?.sessionOver) {
+    if (event.button !== 0 || !gameStarted || !targetRef.current || game?.sessionOver) {
       return;
     }
 
@@ -324,7 +338,7 @@ function App() {
       const scoreBase = scopedRef.current
         ? game?.scopedScoreBase ?? SCOPED_SCORE_BASE
         : game?.normalScoreBase ?? NORMAL_SCORE_BASE;
-      const resizeTimeMs = game?.resizeTimeMs ?? RESIZE_TIME_MS;
+      const resizeTimeMs = getTargetTimeMs(game);
       const distanceScore = scoreBase * (dotRadius / Math.max(1, shotDistance));
       const timeScore = scoreBase * (resizeTimeMs / Math.max(1, elapsed));
 
@@ -402,13 +416,36 @@ function App() {
         </div>
       </div>
 
+      <div className="instructions">
+        <strong>Instructions</strong>
+        <span>Left click to shoot targets.</span>
+        <span>Right click and hold to scope.</span>
+        <span>Miss {variables.maxMisses} targets and the session ends.</span>
+      </div>
+
       <div className="settings">
         <span>Dot {variables.dotSize}px</span>
         <span>Ring x{variables.ringMultiplier}</span>
         <span>{variables.resizeTimeMs / 1000}s</span>
         <span>Radius {variables.canvasRadiusViewportHeight * 100}vh</span>
-        <span>{isScoped ? `Scope x${variables.scopedSizeMultiplier}` : "Normal"}</span>
+        <span>
+          {isScoped
+            ? `Scope x${variables.scopedSizeMultiplier}, time x${variables.scopedTimeMultiplier}`
+            : "Normal"}
+        </span>
       </div>
+
+      {!gameStarted && (
+        <div className="session-over" role="dialog" aria-modal="true" aria-labelledby="start-title">
+          <div className="session-over-panel">
+            <h1 id="start-title">Trigger Training</h1>
+            <p>Start the drill when you are ready.</p>
+            <button type="button" onClick={resetGame}>
+              Start
+            </button>
+          </div>
+        </div>
+      )}
 
       {sessionOver && (
         <div className="session-over" role="dialog" aria-modal="true" aria-labelledby="final-score">
